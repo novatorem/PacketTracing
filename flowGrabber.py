@@ -104,12 +104,47 @@ def getSizeFlows():
 # flows, TCP flows, or UDP flows? Do you see any difference between TCP and UDP flows? 
 
 def interPacketArrival():
+    #i = 0
+    flows = []
+    with open('allPacketsTime.csv') as csv_file:
+        csvReader = csv.reader(csv_file, delimiter=',')
+        for row in csvReader:
+            #i += 1
+            #if i > 100:
+            #    break
+            if row[4] == 'TCP':
+                inFlows = False
+                source = row[2]
+                destination = row[3]
+                for flow in flows:
+                    if source in flow and destination in flow:
+                        flow[3] = int(flow[3]) + 1 #packet count
+                        flow[2] = str(float(flow[2]) + float(row[7])) #length of packet
+                        inFlows = True
+                        break
+                if not(inFlows):
+                    flows.append([source, destination, float(row[7]), 1])
+    for flow in flows:
+        flow = [flow[0], flow[1], float(flow[2]) / int(flow[3])]
+    saveToCSV(flows)
+
+# TCP State: For each TCP  flow,  determine  the  final  state  of  the  connection. You  can  do  this  by 
+# checking the TCP header flags. To simplify, assign each connection to one of these classes: Request 
+# (only the initial SYN packet), Reset (the connection terminated after one side sent a reset signal), 
+# Finished (the connection is successfully terminated after each side sent the FIN message and the 
+# other side acknowledged it), Ongoing (if the last packet was sent during the 5 minutes of the trace 
+# file), and Failed (if the last packets was sent before the last 5 minutes of the trace file and the 
+# connection is not terminated by a reset or FIN message. This case usually represents connections 
+# that suddenly disconnected, e.g., when one side is disconnected from the Internet). 
+
+def TCPState():
     pass
 
 #getNumFlows()
 #getFlowDuration()
-getSizeFlows()
-#interPacketArrival()
+#getSizeFlows()
+interPacketArrival()
+#TCPState()
 
 #info = row[6].split(' ')
 #print(info[9][4:])
