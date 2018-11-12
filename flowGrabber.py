@@ -1,4 +1,5 @@
 import os
+import re
 import csv
 
 def getNumFlows():
@@ -69,7 +70,6 @@ def getFlowDuration():
 
     saveToCSV(flows)
 
-
 # For TCP packets, in the addition to the total byte sum, calculate 
 # the overhead ratio as the sum of all headers (including TCP, IP, and Ethernet) divided by the total 
 # size of  the data  that is  transferred by  the  flow. If  the  flow did  not  transfer any data  (e.g.,  the 
@@ -97,11 +97,6 @@ def getSizeFlows():
                 if not(inFlows):
                     flows.append([source, destination, 1, row[5]])
     saveToCSV(flows)
-
-# Inter‐packet arrival  time: Calculate  the arrival  time between consecutive packets in each  flow. 
-# Then draw the CDF of inter‐arrival time between packets for all flows, TCP flows, and UDP flows. 
-# Is  there any  specific inter‐arrival  time  that appears more commonly? If yes, is it present in all 
-# flows, TCP flows, or UDP flows? Do you see any difference between TCP and UDP flows? 
 
 def interPacketArrival():
     #i = 0
@@ -138,13 +133,53 @@ def interPacketArrival():
 # that suddenly disconnected, e.g., when one side is disconnected from the Internet). 
 
 def TCPState():
-    pass
+    #i = 0
+    flows = []
+    with open('allPackets.csv') as csv_file:
+        csvReader = csv.reader(csv_file, delimiter=',')
+        for row in csvReader:
+            #i += 1
+            #if i > 100:
+                #break
+            if row[4] == 'TCP':
+                inFlows = False
+                source = row[2]
+                destination = row[3]
+                for flow in flows:
+                    if source in flow and destination in flow:
+                        if 'ACK' in row[6]:
+                            if 'ACK' not in flow[2]:
+                                flow[2].append('ACK')
+                        if 'SYN' in row[6]:
+                            if 'SYN' not in flow[2]:
+                                flow[2].append('SYN')
+                        if 'FIN' in row[6]:
+                            if 'FIN' not in flow[2]:
+                                flow[2].append('FIN')
+                        if 'RST' in row[6]:
+                            if 'RST' not in flow[2]:
+                                flow[2].append('RST')
+                        inFlows = True
+                        break
+                if not(inFlows):
+                    flow = [source, destination, []]
+                    if 'ACK' in row[6]:
+                        if 'ACK' not in flow[2]:
+                            flow[2].append('ACK')
+                    if 'SYN' in row[6]:
+                        if 'SYN' not in flow[2]:
+                            flow[2].append('SYN')
+                    if 'FIN' in row[6]:
+                        if 'FIN' not in flow[2]:
+                            flow[2].append('FIN')
+                    if 'RST' in row[6]:
+                        if 'RST' not in flow[2]:
+                            flow[2].append('RST')
+                    flows.append(flow)
+    saveToCSV(flows)
 
 #getNumFlows()
 #getFlowDuration()
 #getSizeFlows()
-interPacketArrival()
-#TCPState()
-
-#info = row[6].split(' ')
-#print(info[9][4:])
+#interPacketArrival()
+TCPState()
