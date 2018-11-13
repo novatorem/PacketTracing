@@ -2,37 +2,43 @@ import os
 import re
 import csv
 
-def getNumFlows():
-    #i = 0
-    flows = []
-    flows.append([0])
-    with open('allPackets.csv') as csv_file:
-        csvReader = csv.reader(csv_file, delimiter=',')
-        for row in csvReader:
-            #i += 1
-            #if i > 100:
-            #    break
-            if row[4] == 'UDP':
-                inFlows = False
-                source = row[2]
-                destination = row[3]
-                for flow in flows:
-                    if source in flow and destination in flow:
-                        flow[2] = flow[2] + 1
-                        inFlows = True
-                        break
-                if not(inFlows):
-                    flows[0][0] = flows[0][0] + 1
-                    flows.append([source, destination, 1])
-
-    print(flows)
-
+#Helper function to save to CSV for easier readability
 def saveToCSV(data, directory = 'output', name = 'data.csv'):
     with open(os.path.join(os.path.dirname(__file__), directory + "/" + name),
             'w') as f:
         for row in data:
             writer = csv.writer(f, quoting=csv.QUOTE_ALL, lineterminator = '\n')
             writer.writerows([row])
+
+# - Get the number of TCP/UDP flows --------------------------------------------
+def getNumFlows():
+    flows = []
+    flows.append([0])
+    with open('allPacketsTime.csv') as csv_file:
+        csvReader = csv.reader(csv_file, delimiter=',')
+        for row in csvReader:
+            if row[4] == 'UDP':
+                inFlows = False #If in a flow, perform for loop, else the if(not)
+                source = row[2]
+                destination = row[3]
+                dPort = (row[-2].split('  >  '))[1].split(' ')[0]
+                sPort = (row[-2].split('  >  '))[0].split(' ')[-1]
+
+                #Go through previous flows, determine if an already existing flow
+                for flow in flows[1:]:
+                    #Check if IP in flow
+                    if source in flow[0] and destination in flow[0] and dPort in flow[0] and sPort in flow[0]:
+                        #Increase number of packets belonging to the flow
+                        inFlows = True
+                        flow[1] += 1
+                        break
+                
+                #If not already in a flow, create a new one
+                if not(inFlows):
+                    flows[0][0] += 1
+                    flows.append([[source, destination, sPort, dPort], 1])
+
+    saveToCSV(flows)
 
 #Needs revision, forgot to account for ports!
 def getFlowDuration():
@@ -148,38 +154,39 @@ def TCPState():
                 for flow in flows:
                     if source in flow and destination in flow:
                         if 'ACK' in row[6]:
-                            if 'ACK' not in flow[2]:
                                 flow[2].append('ACK')
-                        if 'SYN' in row[6]:
-                            if 'SYN' not in flow[2]:
-                                flow[2].append('SYN')
+                        if 'ACK, SYN' in row[6]:
+                            flow[2].append('ACK, SYN')
                         if 'FIN' in row[6]:
-                            if 'FIN' not in flow[2]:
                                 flow[2].append('FIN')
                         if 'RST' in row[6]:
-                            if 'RST' not in flow[2]:
                                 flow[2].append('RST')
                         inFlows = True
                         break
                 if not(inFlows):
                     flow = [source, destination, []]
                     if 'ACK' in row[6]:
-                        if 'ACK' not in flow[2]:
-                            flow[2].append('ACK')
+                        flow[2].append('ACK')
                     if 'SYN' in row[6]:
-                        if 'SYN' not in flow[2]:
-                            flow[2].append('SYN')
+                        flow[2].append('SYN')
                     if 'FIN' in row[6]:
-                        if 'FIN' not in flow[2]:
-                            flow[2].append('FIN')
+                        flow[2].append('FIN')
                     if 'RST' in row[6]:
-                        if 'RST' not in flow[2]:
-                            flow[2].append('RST')
+                        flow[2].append('RST')
                     flows.append(flow)
-    saveToCSV(flows)
 
-#getNumFlows()
+    saveToCSV(flows)
+    tally = [['ACK', 0], ['SYN', 0], ['FIN', 0], ['RST', 0], ['SYN, ACK']]
+    for flow in flows:
+        
+        if ''.join(flow).rfind('FIN') < ''.join(flow).rfind('RST'):
+            tally[3][1] += 1
+        elif flow[-2] == 'FIN' and flow[-1] == 'ACK':
+            tally[2][1] += 1
+    print(tally)
+
+getNumFlows()
 #getFlowDuration()
 #getSizeFlows()
 #interPacketArrival()
-TCPState()
+#TCPState()
