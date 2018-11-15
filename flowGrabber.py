@@ -14,7 +14,7 @@ def saveToCSV(data, directory = 'output', name = 'data.csv'):
 def getNumFlows():
     flows = []
     flows.append([0])
-    with open('allPacketsTime.csv') as csv_file:
+    with open('allPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
             if row[4] == 'TCP':
@@ -40,12 +40,18 @@ def getNumFlows():
 
     saveToCSV(flows)
 
+def test():
+    flows = 0
+    with open('udpConversations.csv') as csv_file:
+        csvReader = csv.reader(csv_file, delimiter=',')
+        for row in csvReader:
+            flows += 1
+    print(flows - 1)
+
 # - Get the duration of unique flows -------------------------------------------
-# This is wrong, please update me to avoid Delta time and instead:
-#   Save time of last frame + total time of all frames
 def getFlowDuration():
     flows = []
-    with open('allPacketsTime.csv') as csv_file:
+    with open('allPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
             if row[4] == 'TCP':
@@ -59,27 +65,27 @@ def getFlowDuration():
                 for flow in flows:
                     #Check if IP in flow
                     if source in flow[0] and destination in flow[0] and dPort in flow[0] and sPort in flow[0]:
-                        if row[1] > flow[2]:
-                            flow[2] = row[1]
+                        flow[1] = float(row[1]) - float(flow[2])
+                        flow[3] += 1
                         inFlows = True
                         break
                 if not(inFlows):
-                    #Flow[1] will be start time of first recieved packet in flow
-                    #Flow[2] will be end time of last recieved packet in flow
-                    flows.append([[source, destination, sPort, dPort], row[1], row[1]])
+                    #Flow[1] will be total time of last recieved packet in flow
+                    #Flow[2] will be start time of first recieved packet in flow
+                    flows.append([[source, destination, sPort, dPort], row[1], row[1], 0])
 
     for flow in flows:
-        start = flow[1]
-        end = flow[2]
+        if flow[-1] < 1:
+            flow[1] = float(0)
         del flow[-1]
-        flow[1] = str(round(float(end) - float(start), 6))
+        del flow[-2]
 
     saveToCSV(flows)
 
 # - Get the size of flows ------------------------------------------------------
 def getSizeFlows():
     flows = []
-    with open('allPacketsTime.csv') as csv_file:
+    with open('allPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
             if row[4] == 'TCP':
@@ -113,7 +119,7 @@ def overHead():
 
 def interPacketArrival():
     flows = []
-    with open('allPacketsTime.csv') as csv_file:
+    with open('allPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
             if row[4] == 'TCP':
@@ -198,5 +204,5 @@ def TCPState():
 #getFlowDuration()
 #getSizeFlows()
 #overHead()
-#interPacketArrival()
+interPacketArrival()
 #TCPState()
