@@ -85,15 +85,22 @@ def getFlowDuration():
 # - Get the size of flows ------------------------------------------------------
 def getSizeFlows():
     flows = []
+    firstRun = True
     with open('allPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
-            if row[4] == 'TCP':
+            if True:#row[4] == 'TCP':
+                if firstRun:
+                    firstRun = False
+                    continue
                 inFlows = False #If in a flow, perform for loop, else the if(not)
                 source = row[2]
                 destination = row[3]
-                dPort = (row[-2].split('  >  '))[1].split(' ')[0]
-                sPort = (row[-2].split('  >  '))[0].split(' ')[-1]
+                try:
+                    dPort = (row[-1].split('  >  '))[1].split(' ')[0]
+                    sPort = (row[-1].split('  >  '))[0].split(' ')[-1]
+                except:
+                    continue
 
                 #Go through previous flows, determine if an already existing flow
                 for flow in flows:
@@ -119,29 +126,39 @@ def overHead():
 
 def interPacketArrival():
     flows = []
+    firstRun = True
     with open('allPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
-            if row[4] == 'TCP':
+            if True:#row[4] == 'UDP':
+                if firstRun:
+                    firstRun = False
+                    continue
                 inFlows = False #If in a flow, perform for loop, else the if(not)
                 source = row[2]
                 destination = row[3]
-                dPort = (row[-2].split('  >  '))[1].split(' ')[0]
-                sPort = (row[-2].split('  >  '))[0].split(' ')[-1]
+                try:
+                    dPort = (row[-1].split('  >  '))[1].split(' ')[0]
+                    sPort = (row[-1].split('  >  '))[0].split(' ')[-1]
+                except:
+                    continue
 
                 #Go through previous flows, determine if an already existing flow
                 for flow in flows:
                     #Check if IP in flow
                     if source in flow[0] and destination in flow[0] and dPort in flow[0] and sPort in flow[0]:
-                        flow[2] = int(flow[2]) + 1 #packet count
-                        flow[1] = str(float(flow[1]) + float(row[7])) #length of packet
+                        flow[3] += 1 #packet count
+                        #duration = previous duration + (current time - time of last packet in flow)
+                        flow[1] = str(float(flow[1]) + (float(row[1]) - float(flow[2])))
+                        flow[2] = row[1] #Time this packet was captured
                         inFlows = True
                         break
                 if not(inFlows):
-                    flows.append([[source, destination, sPort, dPort], float(row[7]), 1])
+                    flows.append([[source, destination, sPort, dPort], float(row[1]), float(row[1]), 1])
 
     for flow in flows:
-        flow = [flow[0], float(flow[1]) / int(flow[2])]
+        #Divide total interpacket time with total number of packets in flow
+        flow = [flow[0], float(flow[1]) / int(flow[3])]
     saveToCSV(flows)
 
 # TCP State: For each TCP  flow,  determine  the  final  state  of  the  connection. You  can  do  this  by 
@@ -202,7 +219,7 @@ def TCPState():
 
 #getNumFlows()
 #getFlowDuration()
-#getSizeFlows()
+getSizeFlows()
 #overHead()
-interPacketArrival()
+#interPacketArrival()
 #TCPState()
