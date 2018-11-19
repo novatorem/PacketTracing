@@ -89,7 +89,7 @@ def getSizeFlows():
     with open('allPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
-            if True:#row[4] == 'TCP':
+            if row[4] == 'UDP':
                 if firstRun:
                     firstRun = False
                     continue
