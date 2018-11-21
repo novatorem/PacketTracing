@@ -114,11 +114,12 @@ def getSizeFlows():
                     flows.append([[source, destination, sPort, dPort], 1, row[5]])
     saveToCSV(flows)
 
-# For TCP packets, in the addition to the total byte sum, calculate 
-# the overhead ratio as the sum of all headers (including TCP, IP, and Ethernet) divided by the total 
-# size of  the data  that is  transferred by  the  flow. If  the  flow did  not  transfer any data  (e.g.,  the 
-# connection did not stablish successfully), use the number 9999 instead to represent infinity. Now 
-# draw the CDF of hit ratio. What can you say about TCP overhead base on this chart?
+# For TCP packets, in the addition to the total byte sum, calculate the overhead
+# ratio as the sum of all headers (including TCP, IP, and Ethernet) divided by
+# the total size of  the data  that is  transferred by  the  flow. If  the  flow
+# did  not  transfer any data  (e.g.,  the connection did not stablish 
+# successfully), use the number 9999 instead to represent infinity. Now draw the
+# CDF of hit ratio. What can you say about TCP overhead base on this chart?
 def overHead():
     pass
 
@@ -161,26 +162,16 @@ def interPacketArrival():
         flow = [flow[0], float(flow[1]) / int(flow[3])]
     saveToCSV(flows)
 
-# TCP State: For each TCP  flow,  determine  the  final  state  of  the  connection. You  can  do  this  by 
-# checking the TCP header flags. To simplify, assign each connection to one of these classes: Request 
-# (only the initial SYN packet), Reset (the connection terminated after one side sent a reset signal), 
-# Finished (the connection is successfully terminated after each side sent the FIN message and the 
-# other side acknowledged it), Ongoing (if the last packet was sent during the 5 minutes of the trace 
-# file), and Failed (if the last packets was sent before the last 5 minutes of the trace file and the 
-# connection is not terminated by a reset or FIN message. This case usually represents connections 
-# that suddenly disconnected, e.g., when one side is disconnected from the Internet). 
-
+# Request (only the initial SYN packet)
+# Reset (the connection terminated after one side sent a reset signal) 
+# Finished (the connection is successfully terminated after each side sent the FIN message and the other side acknowledged it)
+# Ongoing (if the last packet was sent during the 5 minutes of the trace file) 
 def TCPState():
-    i = 0
     flows = []
     firstRun = True
     with open('tcpPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
-            i += 1
-            if i > 100:
-                break
-
             #Ensures that we skip the first iteration
             if firstRun:
                     firstRun = False
@@ -205,10 +196,41 @@ def TCPState():
             if not(inFlows):
                 extract = ''.join([i for i in row[-2] if not i.isdigit()]).replace('\\', '')
                 flows.append([[source, destination, sPort, dPort], [extract]])
-    
-    for flow in flows:
-        print(flow)
 
+    counter = [['Request', 0], ['Reset', 0], ['Finished', 0], ['Ongoing', 0]]
+
+    for flow in flows:
+
+        #This is a hack, to check if second to last packet has 'F' flag in it
+        finished = False
+        if len(flow[1]) > 1:
+            if 'F' in flow[1][-2]:
+                finished = True
+
+        #If the flow has been reset
+        if 'R' in flow[1][-1]:
+            counter[1][1] += 1
+        
+        #If the flow has succesfully ended
+        elif ('F' in flow[1][-1]) or finished:
+            counter[2][1] += 1
+
+        #If the flow is ongoing
+        elif 'A' in flow[1][-1]:
+            counter[3][1] += 1
+
+        #Else, it's a request or identify it
+        else:
+            notS = False
+            for element in flow[1]:
+                if element != 'S':
+                    print(flow[1])
+                    notS = True
+                    break
+            if not(notS):
+                counter[0][1] += 1
+
+    print(counter) 
 
 #getNumFlows()
 #getFlowDuration()
