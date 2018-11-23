@@ -17,26 +17,26 @@ def getNumFlows():
     with open('allPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
-            if row[4] == 'TCP':
-                inFlows = False #If in a flow, perform for loop, else the if(not)
-                source = row[2]
-                destination = row[3]
-                dPort = (row[-2].split('  >  '))[1].split(' ')[0]
-                sPort = (row[-2].split('  >  '))[0].split(' ')[-1]
+            #if row[4] == 'TCP':
+            inFlows = False #If in a flow, perform for loop, else the if(not)
+            source = row[2]
+            destination = row[3]
+            dPort = (row[-2].split('  >  '))[1].split(' ')[0]
+            sPort = (row[-2].split('  >  '))[0].split(' ')[-1]
 
-                #Go through previous flows, determine if an already existing flow
-                for flow in flows[1:]:
-                    #Check if IP in flow
-                    if source in flow[0] and destination in flow[0] and dPort in flow[0] and sPort in flow[0]:
-                        #Increase number of packets belonging to the flow
-                        inFlows = True
-                        flow[1] += 1
-                        break
-                
-                #If not already in a flow, create a new one
-                if not(inFlows):
-                    flows[0][0] += 1
-                    flows.append([[source, destination, sPort, dPort], 1])
+            #Go through previous flows, determine if an already existing flow
+            for flow in flows[1:]:
+                #Check if IP in flow
+                if source in flow[0] and destination in flow[0] and dPort in flow[0] and sPort in flow[0]:
+                    #Increase number of packets belonging to the flow
+                    inFlows = True
+                    flow[1] += 1
+                    break
+            
+            #If not already in a flow, create a new one
+            if not(inFlows):
+                flows[0][0] += 1
+                flows.append([[source, destination, sPort, dPort], 1])
 
     saveToCSV(flows)
 
@@ -51,28 +51,31 @@ def test():
 # - Get the duration of unique flows -------------------------------------------
 def getFlowDuration():
     flows = []
+    firstRun = True
     with open('allPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
-            if row[4] == 'TCP':
-                inFlows = False #If in a flow, perform for loop, else the if(not)
-                source = row[2]
-                destination = row[3]
-                dPort = (row[-2].split('  >  '))[1].split(' ')[0]
-                sPort = (row[-2].split('  >  '))[0].split(' ')[-1]
+            if firstRun:
+                    firstRun = False
+                    continue
+            inFlows = False #If in a flow, perform for loop, else the if(not)
+            source = row[2]
+            destination = row[3]
+            dPort = (row[-2].split('  >  '))[1].split(' ')[0]
+            sPort = (row[-2].split('  >  '))[0].split(' ')[-1]
 
-                #Go through previous flows, determine if an already existing flow
-                for flow in flows:
-                    #Check if IP in flow
-                    if source in flow[0] and destination in flow[0] and dPort in flow[0] and sPort in flow[0]:
-                        flow[1] = float(row[1]) - float(flow[2])
-                        flow[3] += 1
-                        inFlows = True
-                        break
-                if not(inFlows):
-                    #Flow[1] will be total time of last recieved packet in flow
-                    #Flow[2] will be start time of first recieved packet in flow
-                    flows.append([[source, destination, sPort, dPort], row[1], row[1], 0])
+            #Go through previous flows, determine if an already existing flow
+            for flow in flows:
+                #Check if IP in flow
+                if source in flow[0] and destination in flow[0] and dPort in flow[0] and sPort in flow[0]:
+                    flow[1] = float(row[1]) - float(flow[2])
+                    flow[3] += 1
+                    inFlows = True
+                    break
+            if not(inFlows):
+                #Flow[1] will be total time of last recieved packet in flow
+                #Flow[2] will be start time of first recieved packet in flow
+                flows.append([[source, destination, sPort, dPort], row[1], row[1], 0])
 
     for flow in flows:
         if flow[-1] < 1:
@@ -114,52 +117,77 @@ def getSizeFlows():
                     flows.append([[source, destination, sPort, dPort], 1, row[5]])
     saveToCSV(flows)
 
-# For TCP packets, in the addition to the total byte sum, calculate the overhead
-# ratio as the sum of all headers (including TCP, IP, and Ethernet) divided by
-# the total size of  the data  that is  transferred by  the  flow. If  the  flow
-# did  not  transfer any data  (e.g.,  the connection did not stablish 
-# successfully), use the number 9999 instead to represent infinity. Now draw the
-# CDF of hit ratio. What can you say about TCP overhead base on this chart?
 def overHead():
-    pass
+    flows = []
+    firstRun = True
+    with open('packetLengths.csv') as csv_file:
+        csvReader = csv.reader(csv_file, delimiter=',')
+        for row in csvReader:
+            if firstRun:
+                firstRun = False
+                continue
+            inFlows = False #If in a flow, perform for loop, else the if(not)
+            source = row[2]
+            destination = row[3]
+            dPort = (row[-1].split('  >  '))[1].split(' ')[0]
+            sPort = (row[-1].split('  >  '))[0].split(' ')[-1]
+
+            #Go through previous flows, determine if an already existing flow
+            for flow in flows:
+                #Check if IP in flow
+                if source in flow[0] and destination in flow[0] and dPort in flow[0] and sPort in flow[0]:
+                    flow[1] = str(int(flow[1]) + (int(row[-3]) - int(row[-2]))) #total packet length
+                    flow[2] = str(int(flow[2]) + int(row[-2])) #tcp data length
+                    inFlows = True
+                    break
+            if not(inFlows):
+                flows.append([[source, destination, sPort, dPort], 1, row[-2]])
+    
+    for flow in flows:
+        if flow[2] == '0':
+            flow[1] = 9999
+            del flow[2]
+        else:
+            flow[1] = int(flow[1]) / int(flow[2])
+            del flow[-1]
+
+    saveToCSV(flows)
 
 # - Inter Packet Arrival time --------------------------------------------------
 
 def interPacketArrival():
     flows = []
     firstRun = True
-    with open('allPackets.csv') as csv_file:
+    with open('bothPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
-            if True:#row[4] == 'UDP':
+            if (row[4] == 'TCP'):# or (row[4] == 'UDP'):
                 if firstRun:
                     firstRun = False
                     continue
                 inFlows = False #If in a flow, perform for loop, else the if(not)
                 source = row[2]
                 destination = row[3]
-                try:
-                    dPort = (row[-1].split('  >  '))[1].split(' ')[0]
-                    sPort = (row[-1].split('  >  '))[0].split(' ')[-1]
-                except:
-                    continue
+                dPort = (row[-1].split('  >  '))[1].split(' ')[0]
+                sPort = (row[-1].split('  >  '))[0].split(' ')[-1]
 
                 #Go through previous flows, determine if an already existing flow
                 for flow in flows:
                     #Check if IP in flow
                     if source in flow[0] and destination in flow[0] and dPort in flow[0] and sPort in flow[0]:
                         flow[3] += 1 #packet count
-                        #duration = previous duration + (current time - time of last packet in flow)
-                        flow[1] = str(float(flow[1]) + (float(row[1]) - float(flow[2])))
-                        flow[2] = row[1] #Time this packet was captured
+                        flow[2] = float(row[1])
                         inFlows = True
                         break
                 if not(inFlows):
                     flows.append([[source, destination, sPort, dPort], float(row[1]), float(row[1]), 1])
 
     for flow in flows:
-        #Divide total interpacket time with total number of packets in flow
-        flow = [flow[0], float(flow[1]) / int(flow[3])]
+        totalTime = flow[2] - flow[1]
+        averageTime = totalTime / flow[3]
+        del flow[-1]
+        del flow[-1]
+        flow[1] = averageTime
     saveToCSV(flows)
 
 # Request (only the initial SYN packet)
@@ -235,6 +263,6 @@ def TCPState():
 #getNumFlows()
 #getFlowDuration()
 #getSizeFlows()
-#overHead()
-#interPacketArrival()
-TCPState()
+overHead()
+interPacketArrival()
+#TCPState()
