@@ -161,7 +161,7 @@ def interPacketArrival():
     with open('bothPackets.csv') as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
-            if (row[4] == 'TCP'):# or (row[4] == 'UDP'):
+            #if (row[4] == 'UDP') or (row[4] == 'TCP'):
                 if firstRun:
                     firstRun = False
                     continue
@@ -260,9 +260,61 @@ def TCPState():
 
     print(counter) 
 
+def rto():
+    RTTS = rtt()
+    time = rttTime()
+    RTOS = [1]
+    SRTT = RTTS[0]
+    RTTVAR = RTTS[0]/2
+    RTOS.append(SRTT + max(0.001, 4 * RTTVAR))
+    SRTTS = [SRTT]
+    for RTT in RTTS[1:]:
+        RTTVAR = (1 - 1/4) * RTTVAR + 1/4 * abs(SRTT - RTT)
+        SRTT = (1 - 1/8) * SRTT + 1/8 * RTT
+        SRTTS.append(SRTT)
+        RTOS.append(SRTT + max(0.001, 4 * RTTVAR))
+    i = 0
+    results = []
+    while i < len(RTTS):
+        temp = [time[i], RTTS[i], SRTTS[i]]
+        results.append(temp)
+        i += 1
+    saveToCSV(results)
+
+def rtt():
+    results = []
+    firstRun = True
+    with open('flow1.csv') as csv_file:
+        csvReader = csv.reader(csv_file, delimiter=',')
+        for row in csvReader:
+            #Ensures that we skip the first iteration
+            if firstRun:
+                    firstRun = False
+                    continue
+
+            if row[-2] != "":
+                results.append(float(row[-2]))
+    return(results)
+
+def rttTime():
+    results = []
+    firstRun = True
+    with open('flow1.csv') as csv_file:
+        csvReader = csv.reader(csv_file, delimiter=',')
+        for row in csvReader:
+            #Ensures that we skip the first iteration
+            if firstRun:
+                    firstRun = False
+                    continue
+
+            if row[-2] != "":
+                results.append(int(float(row[1])))
+    return(results)
+
 #getNumFlows()
 #getFlowDuration()
 #getSizeFlows()
-overHead()
-interPacketArrival()
+#overHead()
+#interPacketArrival()
 #TCPState()
+rto()
