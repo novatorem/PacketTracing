@@ -1,6 +1,7 @@
 import os
 import re
 import csv
+import statistics
 
 #Helper function to save to CSV for easier readability
 def saveToCSV(data, directory = 'output', name = 'data.csv'):
@@ -281,10 +282,10 @@ def rto():
         i += 1
     saveToCSV(results)
 
-def rtt():
+def rtt(data = 'flow1.csv'):
     results = []
     firstRun = True
-    with open('flow1.csv') as csv_file:
+    with open(data) as csv_file:
         csvReader = csv.reader(csv_file, delimiter=',')
         for row in csvReader:
             #Ensures that we skip the first iteration
@@ -311,10 +312,71 @@ def rttTime():
                 results.append(int(float(row[1])))
     return(results)
 
+def rttEstimation(data = 'rtt3.csv'):
+    flows = []
+    firstRun = True
+    with open(data) as csv_file:
+        csvReader = csv.reader(csv_file, delimiter=',')
+        for row in csvReader:
+            #Ensures that we skip the first iteration
+            if firstRun:
+                    firstRun = False
+                    continue
+            #If in a flow, perform for loop, else the if(not)
+            inFlows = False 
+            #Get the flow by isolating for IP/Port
+            source = row[2]
+            destination = row[3]
+            dPort = (row[-1].split('  >  '))[1].split(' ')[0]
+            sPort = (row[-1].split('  >  '))[0].split(' ')[-1]
+
+            #Go through previous flows, determine if in an already existing flow
+            for flow in flows:
+                #Check if IP/Port in flow
+                if source in flow[0] and destination in flow[0] and dPort in flow[0] and sPort in flow[0]:
+                    #Add the packet to an existing flow
+                    flow[1].append(row)
+                    inFlows = True
+                    break
+
+            #Create a new flow
+            if not(inFlows):
+                flows.append([[source, destination, sPort, dPort], [row], row[1]])
+
+    #All the RTTs of all the flows
+    RTTSflows = []
+    #For each flow in the host, get the RTTs and add them
+    for flow in flows:
+        temp = []
+        for row in flow[1]:
+                if row[-2] != "":
+                    temp.append(float(row[-2]))
+        RTTSflows.append(temp)
+    medians = []
+    #Go through all the RTTs of each flow
+    for RTTS in RTTSflows:
+        #SRTT formula to get the estimation
+        SRTT = RTTS[0]
+        SRTTS = [SRTT]
+        for RTT in RTTS:
+            SRTT = (1 - 1/8) * SRTT + 1/8 * RTT
+            SRTTS.append(SRTT)
+        #Append all the median SRTTS
+        medians.append(statistics.median(SRTTS))
+
+    #Send to csv a list of [TIME, MEDIAN SRTT]
+    timeMedian = []
+    i = 0
+    while i < len(flows):
+        timeMedian.append([flows[i][-1], medians[i]])
+        i += 1
+    saveToCSV(timeMedian)
+
 #getNumFlows()
 #getFlowDuration()
 #getSizeFlows()
 #overHead()
 #interPacketArrival()
 #TCPState()
-rto()
+#rto()
+rttEstimation()
